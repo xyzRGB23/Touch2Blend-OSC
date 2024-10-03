@@ -1,0 +1,147 @@
+bl_info = {
+    "name": "Dynamic OSC Receiver with Adjustable Retry Rate",
+    "blender": (2, 80, 0),
+    "category": "Object",
+}
+
+import threading
+import queue
+import bpy
+from pythonosc import dispatcher
+from pythonosc import osc_server
+
+# Global variables
+osc_thread = None
+message_queue = queue.Queue()
+
+# Define the channel item
+class OSCChannelItem(bpy.types.PropertyGroup):
+    name: bpy.props.StringProperty()
+    value: bpy.props.FloatProperty()
+
+# Define the PropertyGroup
+class OSCProperties(bpy.types.PropertyGroup):
+    channels: bpy.props.CollectionProperty(type=OSCChannelItem)
+    channel_index: bpy.props.IntProperty()
+    
+    retry_rate: bpy.props.FloatProperty(
+        name="Retry Rate",
+        description="Interval between OSC message checks (in seconds)",
+        default=0.1,
+        min=0.001,
+        max=2.0,
+        subtype='TIME',
+        unit='TIME'
+    )
+
+# Define the UI Panel
+class OBJECT_PT_OSCPropertiesPanel(bpy.types.Panel):
+    bl_label = "OSC Properties"
+    bl_idname = "OBJECT_PT_osc_properties"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "object"
+
+    def draw(self, context):
+        layout = self.layout
+        obj = context.object
+
+        if obj is not None and hasattr(obj, "osc_props"):
+            osc_props = obj.osc_props
+
+            # Add control for retry rate
+            layout.prop(osc_props, "retry_rate")
+            layout.separator()
+
+            for channel in osc_props.channels:
+                row = layout.row()
+                row.prop(channel, "value", text=channel.name)
+        else:
+            layout.label(text="No OSC properties available.")
+
+def osc_message_handler(address, *args):
+    message_queue.put((address, args))
+
+def start_osc_server():
+    global osc_thread
+    ip = "0.0.0.0"
+    port = 10001 ############################################## Port here
+
+    disp = dispatcher.Dispatcher()
+    disp.set_default_handler(osc_message_handler)
+
+    server = osc_server.ThreadingOSCUDPServer((ip, port), disp)
+    print(f"OSC server listening on {ip}:{port}")
+
+    osc_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    osc_thread.start()
+
+def update_channel_value(osc_props, channel_name, value):
+    # Check if the channel already exists
+    for item in osc_props.channels:
+        if item.name == channel_name:
+            item.value = value
+            break
+    else:
+        # Add a new channel
+        new_item = osc_props.channels.add()
+        new_item.name = channel_name
+        new_item.value = value
+
+def process_osc_messages():
+    obj = bpy.context.object
+
+    if obj is None or not hasattr(obj, "osc_props"):
+        # print("No active object with OSC properties selected.")
+        return 0.1  # Retry after 0.1 seconds
+
+    osc_props = obj.osc_props
+
+    while not message_queue.empty():
+        address, args = message_queue.get()
+
+        # Extract channel name from OSC address
+        channel_name = address.lstrip('/')
+
+        if not channel_name:
+            print(f"Received OSC message with empty address: {args}")
+            continue
+
+        value = args[0] if args else 0.0
+
+        # Update or add the channel
+        update_channel_value(osc_props, channel_name, value)
+
+        # print(f"Updated {channel_name} to {value}")
+
+    # Refresh the UI to display updated properties
+    for area in bpy.context.screen.areas:
+        if area.type in {'PROPERTIES', 'VIEW_3D'}:
+            area.tag_redraw()
+
+    # Use the retry rate from the property, clamped between 0.001 and 2.0
+    return max(0.001, min(osc_props.retry_rate, 2.0))
+
+def register():
+    bpy.utils.register_class(OSCChannelItem)
+    bpy.utils.register_class(OSCProperties)
+    bpy.utils.register_class(OBJECT_PT_OSCPropertiesPanel)
+
+    bpy.types.Object.osc_props = bpy.props.PointerProperty(type=OSCProperties)
+
+    start_osc_server()
+    bpy.app.timers.register(process_osc_messages)
+
+def unregister():
+    bpy.utils.unregister_class(OBJECT_PT_OSCPropertiesPanel)
+    bpy.utils.unregister_class(OSCProperties)
+    bpy.utils.unregister_class(OSCChannelItem)
+
+    del bpy.types.Object.osc_props
+
+    bpy.app.timers.unregister(process_osc_messages)
+
+if __name__ == "__main__":
+    register()
+
+## code written with assistance of ChatGPT o1 preview
