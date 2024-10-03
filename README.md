@@ -30,3 +30,9 @@
 Retry Rate: How often Blender checks for OSC updates.
 
 _Samplerate: The Samplerate in wich Data is sent from TouchDesigner. This Value can only be changed within Touchdesigner
+
+## Gallery
+![image](https://github.com/user-attachments/assets/bb9d89d7-0d83-4c75-9cc6-33cdc55ae72f)
+![image](https://github.com/user-attachments/assets/be6c32f7-7f0d-4469-a332-31b6cd1713ed)
+
+
