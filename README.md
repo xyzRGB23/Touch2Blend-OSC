@@ -20,7 +20,7 @@
   renaming the channel will resilt in a corresponding name in Blender
 
 ### 3. Create a new Blend File
-   go into text Editor and run the code from [Touch2Blend](Touch2Blend-OSC/Touch2Blend). A firewall request may pop up.
+   go into text Editor and run the code from [Touch2Blend](Touch2Blend). A firewall request may pop up.
 
 ### 4. Use Values as Drivers
   The shared Values will now be visible in the properties Panel under Object and OSC Properties. They will only be updated of the underlying object is selected.
