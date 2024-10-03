@@ -1,0 +1,119 @@
+bl_info = {
+    "name": "OSC Receiver",
+    "blender": (2, 80, 0),
+    "category": "Object",
+}
+
+import threading
+import queue
+import bpy
+from pythonosc import dispatcher
+from pythonosc import osc_server
+
+# Global variables
+osc_thread = None
+message_queue = queue.Queue()
+
+# Define the PropertyGroup
+class OSCProperties(bpy.types.PropertyGroup):
+    oscIN_1: bpy.props.FloatProperty(
+        name="oscIN_1",
+        default=0.0,
+        update=lambda self, context: print(f"oscIN_1 updated to {self.oscIN_1}")
+    )
+    oscIN_2: bpy.props.FloatProperty(
+        name="oscIN_2",
+        default=0.0,
+        update=lambda self, context: print(f"oscIN_2 updated to {self.oscIN_2}")
+    )
+    oscIN_3: bpy.props.FloatProperty(
+        name="oscIN_3",
+        default=0.0,
+        update=lambda self, context: print(f"oscIN_3 updated to {self.oscIN_3}")
+    )
+
+# Define the UI Panel
+class OBJECT_PT_OSCPropertiesPanel(bpy.types.Panel):
+    bl_label = "OSC Properties"
+    bl_idname = "OBJECT_PT_osc_properties"
+    bl_space_type = 'PROPERTIES'
+    bl_region_type = 'WINDOW'
+    bl_context = "object"
+    
+    def draw(self, context):
+        layout = self.layout
+        obj = context.object
+        
+        if obj is not None and hasattr(obj, "osc_props"):
+            osc_props = obj.osc_props
+            layout.prop(osc_props, "oscIN_1")
+            layout.prop(osc_props, "oscIN_2")
+            layout.prop(osc_props, "oscIN_3")
+        else:
+            layout.label(text="No OSC properties available.")
+
+def osc_message_handler(address, *args):
+    message_queue.put((address, args))
+
+def start_osc_server():
+    global osc_thread
+    ip = "0.0.0.0"
+    port = 10001
+
+    disp = dispatcher.Dispatcher()
+    disp.map("/c1", osc_message_handler)
+    disp.map("/c2", osc_message_handler)
+    disp.map("/c3", osc_message_handler)
+    disp.set_default_handler(osc_message_handler)
+
+    server = osc_server.ThreadingOSCUDPServer((ip, port), disp)
+    print(f"OSC server listening on {ip}:{port}")
+
+    osc_thread = threading.Thread(target=server.serve_forever, daemon=True)
+    osc_thread.start()
+
+def process_osc_messages():
+    obj = bpy.context.object
+
+    if obj is None or not hasattr(obj, "osc_props"):
+        print("No active object with OSC properties selected.")
+        return 0.02  # Retry after 0.1 seconds
+
+    osc_props = obj.osc_props
+
+    while not message_queue.empty():
+        address, args = message_queue.get()
+
+        if address == '/c1':
+            osc_props.oscIN_1 = args[0]
+            print(f"Updated oscIN_1 to {args[0]}")
+        elif address == '/c2':
+            osc_props.oscIN_2 = args[0]
+            print(f"Updated oscIN_2 to {args[0]}")
+        elif address == '/c3':
+            osc_props.oscIN_3 = args[0]
+            print(f"Updated oscIN_3 to {args[0]}")
+        else:
+            print(f"Received unknown OSC message on {address}: {args}")
+
+    return 0.02  # The function will be called again after 0.1 seconds
+
+def register():
+    bpy.utils.register_class(OSCProperties)
+    bpy.utils.register_class(OBJECT_PT_OSCPropertiesPanel)
+    
+    bpy.types.Object.osc_props = bpy.props.PointerProperty(type=OSCProperties)
+    
+    start_osc_server()
+    bpy.app.timers.register(process_osc_messages)
+
+def unregister():
+    bpy.utils.unregister_class(OBJECT_PT_OSCPropertiesPanel)
+    bpy.utils.unregister_class(OSCProperties)
+    
+    del bpy.types.Object.osc_props
+    
+    bpy.app.timers.unregister(process_osc_messages)
+
+if __name__ == "__main__":
+    register()
