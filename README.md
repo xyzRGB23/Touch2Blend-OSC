@@ -9,7 +9,19 @@
    How to set this up:
    Open Blender > Change Viewport to Text Editor > Create new File > Run the following code > close Blender
    ```
-   code will be pasted here
+   import subprocess
+   import sys
+   import os
+ 
+   python_exe = os.path.join(sys.prefix, 'bin', 'python.exe')
+   target = os.path.join(sys.prefix, 'lib', 'site-packages')
+    
+   subprocess.call([python_exe, '-m', 'ensurepip'])
+   subprocess.call([python_exe, '-m', 'pip', 'install', '--upgrade', 'pip'])
+
+   subprocess.call([python_exe, '-m', 'pip', 'install', '--upgrade', 'python-OSC')
+    
+   print('DONE')
    ```
    > from https://blender.stackexchange.com/questions/56011/how-to-install-pip-for-blenders-bundled-python
 
