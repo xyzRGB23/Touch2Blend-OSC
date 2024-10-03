@@ -1,5 +1,5 @@
 # Touch2Blend-OSC
- Stream parameters from Touchdesigner to Blender to use as Drivers via OSC.
+ Stream parameters from Touchdesigner to Blender to use as Drivers via OSC. Tested in Blender 4.2.2 LTS (latest 1.10.2024) and TouchDesigner 2023.11510
 
  ## Dependencies:
  python-OSC
