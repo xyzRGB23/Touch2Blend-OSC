@@ -36,7 +36,7 @@
 
 ### 4. Use Values as Drivers
   The shared Values will now be visible in the properties Panel under Object and OSC Properties. They will only be updated of the underlying object is selected.
-  To use these values, right-click and Copy as New Driver and then Paste them in any Parameter you want to control.
+  To use these values, right-click and Copy as New Driver and then Paste them in any Parameter you want to control. On some PCs the main code isnt working properly, use the alternative code instead
 
 ### Parameters
 Retry Rate: How often Blender checks for OSC updates.
